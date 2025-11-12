@@ -37,6 +37,8 @@ interface Reminder {
 export default function Index() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [activeTab, setActiveTab] = useState('calendar');
+  const [imageUrl, setImageUrl] = useState('');
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [medicines, setMedicines] = useState<Medicine[]>([
     {
       id: '1',
@@ -82,11 +84,22 @@ export default function Index() {
     return categories.find(cat => cat.value === categoryValue) || categories[3];
   };
 
+  const handleImageUrlChange = (url: string) => {
+    setImageUrl(url);
+    if (url) {
+      setImagePreview(url);
+    } else {
+      setImagePreview(null);
+    }
+  };
+
   const handleAddMedicine = () => {
     toast({
       title: 'Лекарство добавлено',
       description: 'Напоминание настроено успешно',
     });
+    setImageUrl('');
+    setImagePreview(null);
   };
 
   return (
@@ -213,6 +226,32 @@ export default function Index() {
                       <div className="space-y-2">
                         <Label htmlFor="time">Время приема</Label>
                         <Input id="time" type="time" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="imageUrl">Фото лекарства (URL)</Label>
+                        <Input 
+                          id="imageUrl" 
+                          placeholder="https://example.com/image.jpg"
+                          value={imageUrl}
+                          onChange={(e) => handleImageUrlChange(e.target.value)}
+                        />
+                        {imagePreview && (
+                          <div className="mt-2 relative w-full h-32 rounded-lg overflow-hidden border">
+                            <img 
+                              src={imagePreview} 
+                              alt="Предпросмотр" 
+                              className="w-full h-full object-cover"
+                              onError={() => {
+                                setImagePreview(null);
+                                toast({
+                                  title: 'Ошибка загрузки',
+                                  description: 'Не удалось загрузить изображение по этой ссылке',
+                                  variant: 'destructive',
+                                });
+                              }}
+                            />
+                          </div>
+                        )}
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="notes">Заметки</Label>
