@@ -13,6 +13,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Icon from '@/components/ui/icon';
 import { toast } from '@/hooks/use-toast';
 
+interface MedicineKit {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+}
+
 interface Medicine {
   id: string;
   name: string;
@@ -23,6 +30,7 @@ interface Medicine {
   notes: string;
   image?: string;
   reminderEnabled: boolean;
+  kitId: string;
 }
 
 interface Reminder {
@@ -39,6 +47,16 @@ export default function Index() {
   const [activeTab, setActiveTab] = useState('calendar');
   const [imageUrl, setImageUrl] = useState('');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  
+  const [medicineKits, setMedicineKits] = useState<MedicineKit[]>([
+    { id: '1', name: 'Домашняя', icon: 'Home', color: 'bg-green-100 text-green-700' },
+    { id: '2', name: 'Рабочая', icon: 'Briefcase', color: 'bg-blue-100 text-blue-700' },
+    { id: '3', name: 'Дорожная', icon: 'Luggage', color: 'bg-orange-100 text-orange-700' },
+  ]);
+  
+  const [selectedKitId, setSelectedKitId] = useState('1');
+  const [newKitName, setNewKitName] = useState('');
+  
   const [medicines, setMedicines] = useState<Medicine[]>([
     {
       id: '1',
@@ -49,6 +67,7 @@ export default function Index() {
       time: ['09:00'],
       notes: 'Принимать во время еды',
       reminderEnabled: true,
+      kitId: '1',
     },
     {
       id: '2',
@@ -59,6 +78,7 @@ export default function Index() {
       time: ['20:00'],
       notes: 'Перед сном',
       reminderEnabled: true,
+      kitId: '1',
     },
   ]);
 
@@ -102,6 +122,27 @@ export default function Index() {
     setImagePreview(null);
   };
 
+  const handleAddKit = () => {
+    if (!newKitName.trim()) return;
+    
+    const newKit: MedicineKit = {
+      id: Date.now().toString(),
+      name: newKitName,
+      icon: 'Package',
+      color: 'bg-purple-100 text-purple-700',
+    };
+    
+    setMedicineKits([...medicineKits, newKit]);
+    setNewKitName('');
+    toast({
+      title: 'Аптечка создана',
+      description: `"${newKitName}" добавлена в список`,
+    });
+  };
+
+  const selectedKit = medicineKits.find(kit => kit.id === selectedKitId);
+  const filteredMedicines = medicines.filter(med => med.kitId === selectedKitId);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-white">
       <div className="container mx-auto p-4 pb-20 max-w-6xl">
@@ -117,6 +158,59 @@ export default function Index() {
           </div>
           <p className="text-muted-foreground">Управляйте лекарствами и напоминаниями</p>
         </header>
+
+        <div className="mb-6 animate-fade-in">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold">Мои аптечки</h2>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Icon name="Plus" size={16} className="mr-2" />
+                  Новая аптечка
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-sm">
+                <DialogHeader>
+                  <DialogTitle>Создать аптечку</DialogTitle>
+                  <DialogDescription>Добавьте новую аптечку для организации лекарств</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="kitName">Название</Label>
+                    <Input
+                      id="kitName"
+                      placeholder="Например: Автомобильная"
+                      value={newKitName}
+                      onChange={(e) => setNewKitName(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button onClick={handleAddKit} className="w-full">Создать</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+          
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {medicineKits.map((kit) => (
+              <Button
+                key={kit.id}
+                variant={selectedKitId === kit.id ? 'default' : 'outline'}
+                className="flex items-center gap-2 whitespace-nowrap"
+                onClick={() => setSelectedKitId(kit.id)}
+              >
+                <div className={selectedKitId === kit.id ? '' : kit.color}>
+                  <Icon name={kit.icon as any} size={18} />
+                </div>
+                {kit.name}
+                <Badge variant="secondary" className="ml-1">
+                  {medicines.filter(m => m.kitId === kit.id).length}
+                </Badge>
+              </Button>
+            ))}
+          </div>
+        </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
@@ -159,15 +253,21 @@ export default function Index() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center justify-between">
-                      <span>Сегодня</span>
-                      <Badge variant="secondary">{medicines.length} лекарств</Badge>
+                      <span>Сегодня • {selectedKit?.name}</span>
+                      <Badge variant="secondary">{filteredMedicines.length} лекарств</Badge>
                     </CardTitle>
                     <CardDescription>
                       {new Date().toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' })}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    {medicines.map((medicine) => {
+                    {filteredMedicines.length === 0 && (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Icon name="PackageOpen" size={48} className="mx-auto mb-2 opacity-50" />
+                        <p>В этой аптечке пока нет лекарств</p>
+                      </div>
+                    )}
+                    {filteredMedicines.map((medicine) => {
                       const categoryInfo = getCategoryInfo(medicine.category);
                       return (
                         <div key={medicine.id} className="flex items-center gap-3 p-3 bg-muted rounded-lg hover:bg-muted/80 transition-colors">
@@ -340,7 +440,7 @@ export default function Index() {
           <TabsContent value="categories" className="animate-fade-in">
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {categories.map((category) => {
-                const categoryMedicines = medicines.filter(m => m.category === category.value);
+                const categoryMedicines = filteredMedicines.filter(m => m.category === category.value);
                 return (
                   <Card key={category.value} className="hover:shadow-lg transition-shadow cursor-pointer">
                     <CardHeader>
@@ -386,6 +486,10 @@ export default function Index() {
                     </div>
                   </div>
                   <div className="space-y-2 pt-4 border-t">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Всего аптечек</span>
+                      <span className="font-semibold">{medicineKits.length}</span>
+                    </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Всего лекарств</span>
                       <span className="font-semibold">{medicines.length}</span>
